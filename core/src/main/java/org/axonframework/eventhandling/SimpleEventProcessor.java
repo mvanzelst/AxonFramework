@@ -23,6 +23,8 @@ import org.axonframework.messaging.MessageHandlerInterceptor;
 import org.axonframework.messaging.unitofwork.CurrentUnitOfWork;
 import org.axonframework.messaging.unitofwork.DefaultUnitOfWork;
 import org.axonframework.messaging.unitofwork.UnitOfWork;
+import org.axonframework.metrics.MessageMonitor;
+import org.axonframework.metrics.NoOpMessageMonitor;
 
 import java.util.List;
 import java.util.Set;
@@ -37,6 +39,8 @@ import java.util.Set;
  */
 public class SimpleEventProcessor extends AbstractEventProcessor {
 
+    private final MessageMonitor<? super EventMessage<?>> messageMonitor;
+
     /**
      * Initializes the event processor with given <code>name</code>.
      *
@@ -44,6 +48,17 @@ public class SimpleEventProcessor extends AbstractEventProcessor {
      */
     public SimpleEventProcessor(String name) {
         super(name);
+        this.messageMonitor = NoOpMessageMonitor.INSTANCE;
+    }
+
+    public SimpleEventProcessor(String name, MessageMonitor<? super EventMessage<?>> messageMonitor) {
+        super(name);
+        this.messageMonitor = messageMonitor;
+    }
+
+    public SimpleEventProcessor(String name, MessageMonitor<? super EventMessage<?>> messageMonitor, EventListener... initialListeners) {
+        super(name, initialListeners);
+        this.messageMonitor = messageMonitor;
     }
 
     /**
@@ -57,10 +72,12 @@ public class SimpleEventProcessor extends AbstractEventProcessor {
      */
     public SimpleEventProcessor(String name, OrderResolver orderResolver) {
         super(name, new EventListenerOrderComparator(orderResolver));
+        this.messageMonitor = NoOpMessageMonitor.INSTANCE;
     }
 
     public SimpleEventProcessor(String name, EventListener... initialListeners) {
         super(name, initialListeners);
+        this.messageMonitor = NoOpMessageMonitor.INSTANCE;
     }
 
     @Override
@@ -68,14 +85,19 @@ public class SimpleEventProcessor extends AbstractEventProcessor {
                           Set<MessageHandlerInterceptor<EventMessage<?>>> interceptors,
                           MultiplexingEventProcessingMonitor monitor) {
         try {
-            for (EventMessage event : events) {
+            for (EventMessage<?> event : events) {
+                MessageMonitor.MonitorCallback monitorCallback = messageMonitor.onMessageIngested(event);
                 UnitOfWork<EventMessage<?>> unitOfWork = DefaultUnitOfWork.startAndGet(event);
+
+                unitOfWork.afterCommit(u -> monitorCallback.onSuccess());
+                unitOfWork.onRollback(u -> monitorCallback.onFailure(u.getExecutionResult().getExceptionResult()));
+
                 InterceptorChain<?> interceptorChain = new DefaultInterceptorChain<>(unitOfWork,
                         interceptors, (message, uow) -> {
-                            for (EventListener eventListener : eventListeners) {
-                                eventListener.handle(message);
-                            }
-                            return null;
+                    for (EventListener eventListener : eventListeners) {
+                        eventListener.handle(message);
+                    }
+                    return null;
                 });
                 unitOfWork.executeWithResult(interceptorChain::proceed);
             }
