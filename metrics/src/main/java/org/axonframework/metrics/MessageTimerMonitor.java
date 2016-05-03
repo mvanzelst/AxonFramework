@@ -1,7 +1,5 @@
 package org.axonframework.metrics;
 
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricSet;
 import com.codahale.metrics.Timer;
 import org.axonframework.messaging.Message;
 
@@ -35,11 +33,11 @@ public class MessageTimerMonitor implements MessageMonitor<Message<?>> {
     }
 
     @Override
-    public MetricSet getMetricSet() {
-        Map<String, Metric> metricSet = new HashMap<>();
+    public Map<String, Object> getMetricSet() {
+        Map<String, Object> metricSet = new HashMap<>();
         metricSet.put("timer", timer);
         metricSet.put("successTimer", successTimer);
         metricSet.put("failureTimer", failureTimer);
-        return () -> metricSet;
+        return metricSet;
     }
 }

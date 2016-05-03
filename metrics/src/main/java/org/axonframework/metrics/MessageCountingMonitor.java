@@ -1,8 +1,6 @@
 package org.axonframework.metrics;
 
 import com.codahale.metrics.Counter;
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricSet;
 import org.axonframework.messaging.Message;
 
 import java.util.HashMap;
@@ -34,13 +32,13 @@ public class MessageCountingMonitor implements MessageMonitor<Message<?>> {
     }
 
     @Override
-    public MetricSet getMetricSet() {
-        Map<String, Metric> metricSet = new HashMap<>();
+    public Map<String, Object> getMetricSet() {
+        Map<String, Object> metricSet = new HashMap<>();
         metricSet.put("ingestedCounter", ingestedCounter);
         metricSet.put("processedCounter", processedCounter);
         metricSet.put("successCounter", successCounter);
         metricSet.put("failureCounter", failureCounter);
-        return () -> metricSet;
+        return metricSet;
     }
 
 

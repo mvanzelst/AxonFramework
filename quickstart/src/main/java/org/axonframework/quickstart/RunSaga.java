@@ -22,11 +22,14 @@ import org.axonframework.commandhandling.SimpleCommandBus;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.commandhandling.gateway.DefaultCommandGateway;
 import org.axonframework.eventhandling.EventBus;
+import org.axonframework.eventhandling.EventMessage;
 import org.axonframework.eventhandling.SimpleEventBus;
 import org.axonframework.eventhandling.SimpleEventProcessor;
 import org.axonframework.eventhandling.scheduling.EventScheduler;
 import org.axonframework.eventhandling.scheduling.java.SimpleEventScheduler;
 import org.axonframework.messaging.unitofwork.UnitOfWork;
+import org.axonframework.metrics.MessageMonitor;
+import org.axonframework.metrics.MessageMonitorBuilder;
 import org.axonframework.quickstart.api.MarkToDoItemOverdueCommand;
 import org.axonframework.quickstart.api.ToDoItemCompletedEvent;
 import org.axonframework.quickstart.api.ToDoItemCreatedEvent;
@@ -56,7 +59,8 @@ public class RunSaga {
         EventBus eventBus = new SimpleEventBus();
 
         // Sagas often need to send commands, so let's create a Command Bus
-        CommandBus commandBus = new SimpleCommandBus();
+        MessageMonitor<CommandMessage<?>> commandMessageMonitor = new MessageMonitorBuilder().buildCommandMessageMonitor();
+        CommandBus commandBus = new SimpleCommandBus(commandMessageMonitor);
 
         // a CommandGateway has a much nicer API
         CommandGateway commandGateway = new DefaultCommandGateway(commandBus);
@@ -85,7 +89,8 @@ public class RunSaga {
         AnnotatedSagaManager sagaManager = new AnnotatedSagaManager(sagaRepository, sagaFactory, ToDoSaga.class);
 
         // and we need to subscribe the Saga Manager to the Event Bus
-        eventBus.subscribe(new SimpleEventProcessor("saga", sagaManager));
+        MessageMonitor<EventMessage<?>> eventMessageMonitor = new MessageMonitorBuilder().buildEventMessageMonitor();
+        eventBus.subscribe(new SimpleEventProcessor("saga", eventMessageMonitor, sagaManager));
 
         // That's the infrastructure we need...
         // Let's pretend a few things are happening

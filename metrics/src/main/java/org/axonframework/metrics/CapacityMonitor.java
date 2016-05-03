@@ -43,13 +43,13 @@ public class CapacityMonitor implements MessageMonitor<Message<?>> {
     }
 
     @Override
-    public MetricSet getMetricSet() {
+    public Map<String, Object> getMetricSet() {
         Snapshot snapshot = processedDurationHistogram.getSnapshot();
         double meanProcessTime = snapshot.getMean();
         int numProcessed = snapshot.getValues().length;
         double capacity = (numProcessed * meanProcessTime) / timeUnit.toMillis(window);
-        Map<String, Metric> metrics = new HashMap<>();
+        Map<String, Object> metrics = new HashMap<>();
         metrics.put("capacity", (Gauge<Double>) () -> capacity);
-        return () -> metrics;
+        return metrics;
     }
 }

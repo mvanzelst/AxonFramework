@@ -1,25 +1,25 @@
 package org.axonframework.metrics;
 
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricSet;
+import org.axonframework.common.Assert;
 import org.axonframework.messaging.Message;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class DelegatingMessageMonitor implements MessageMonitor<Message<?>> {
+public class DelegatingMessageMonitor<T extends Message<?>> implements MessageMonitor<T> {
 
-    private final List<MessageMonitor<Message<?>>> messageMonitors;
+    private final List<MessageMonitor<? super T>> messageMonitors;
 
-    public DelegatingMessageMonitor(MessageMonitor<Message<?>>... messageMonitors) {
-        this.messageMonitors = Arrays.asList(messageMonitors);
+    public DelegatingMessageMonitor(List<MessageMonitor<? super T>> messageMonitors) {
+        Assert.notNull(messageMonitors, "MessageMonitor list may not be null");
+        this.messageMonitors = new ArrayList<>(messageMonitors);
     }
 
     @Override
-    public MonitorCallback onMessageIngested(Message<?> message) {
+    public MonitorCallback onMessageIngested(T message) {
         List<MonitorCallback> monitorCallbacks = messageMonitors.stream()
                 .map(eventBusMonitor -> eventBusMonitor.onMessageIngested(message))
                 .collect(Collectors.toList());
@@ -37,9 +37,9 @@ public class DelegatingMessageMonitor implements MessageMonitor<Message<?>> {
     }
 
     @Override
-    public MetricSet getMetricSet() {
-        Map<String, Metric> metrics = new HashMap<>();
-        messageMonitors.forEach(eventBusMonitor -> metrics.putAll(eventBusMonitor.getMetricSet().getMetrics()));
-        return () -> metrics;
+    public Map<String, Object> getMetricSet() {
+        Map<String, Object> metrics = new HashMap<>();
+        messageMonitors.forEach(eventBusMonitor -> metrics.putAll(eventBusMonitor.getMetricSet()));
+        return metrics;
     }
 }

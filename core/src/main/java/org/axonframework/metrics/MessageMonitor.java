@@ -2,7 +2,7 @@ package org.axonframework.metrics;
 
 import org.axonframework.messaging.Message;
 
-public interface MessageMonitor<T extends Message> extends MetricSupport {
+public interface MessageMonitor<T extends Message<?>> extends MetricSupport {
 
     MonitorCallback onMessageIngested(T message);
 
