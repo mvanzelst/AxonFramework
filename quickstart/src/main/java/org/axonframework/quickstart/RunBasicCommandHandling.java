@@ -1,3 +1,4 @@
+        mr.getMetrics().entrySet().stream()
 /*
  * Copyright (c) 2010-2014. Axon Framework
  *
@@ -16,6 +17,7 @@
 
 package org.axonframework.quickstart;
 
+import com.codahale.metrics.MetricRegistry;
 import org.axonframework.commandhandling.CommandBus;
 import org.axonframework.commandhandling.SimpleCommandBus;
 import org.axonframework.commandhandling.gateway.CommandGateway;
@@ -47,6 +49,8 @@ public class RunBasicCommandHandling {
 
     public static void main(String[] args) {
         // let's start with the Command Bus
+        MetricRegistry mr = new MetricRegistry();
+        MessageMonitor<CommandMessage<?>> commandMessageMonitor = new MessageMonitorBuilder().buildCommandMessageMonitor(mr);
         CommandBus commandBus = new SimpleCommandBus();
 
         // the CommandGateway provides a friendlier API to send commands

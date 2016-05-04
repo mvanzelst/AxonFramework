@@ -57,13 +57,13 @@ public class SimpleCommandBus implements CommandBus {
     private UnitOfWorkFactory<?> unitOfWorkFactory = new DefaultUnitOfWorkFactory();
     private RollbackConfiguration rollbackConfiguration = RollbackConfigurationType.UNCHECKED_EXCEPTIONS;
 
-    private MessageMonitor<CommandMessage<?>> messageMonitor;
+    private MessageMonitor<? super CommandMessage<?>> messageMonitor;
 
     /**
      * Initializes the SimpleCommandBus.
      */
     public SimpleCommandBus() {
-        this.messageMonitor = new NoOpMessageMonitor<>();
+        this.messageMonitor = NoOpMessageMonitor.INSTANCE;
     }
 
     public SimpleCommandBus(MessageMonitor<CommandMessage<?>> messageMonitor) {
@@ -99,17 +99,14 @@ public class SimpleCommandBus implements CommandBus {
      */
     @SuppressWarnings({"unchecked"})
     protected <C, R> void doDispatch(CommandMessage<C> command, CommandCallback<? super C, R> callback) {
-        MessageMonitor.MonitorCallback monitorCallback = null;
+        MessageMonitor.MonitorCallback monitorCallback = messageMonitor.onMessageIngested(command);
         try {
             MessageHandler<? super CommandMessage<?>> handler = findCommandHandlerFor(command);
-            monitorCallback = messageMonitor.onMessageIngested(command);
             Object result = doDispatch(command, handler);
             monitorCallback.onSuccess();
             callback.onSuccess(command, (R) result);
         } catch (Exception throwable) {
-            if(monitorCallback != null){
-                monitorCallback.onFailure(throwable);
-            }
+            monitorCallback.onFailure(throwable);
             callback.onFailure(command, throwable);
         }
     }

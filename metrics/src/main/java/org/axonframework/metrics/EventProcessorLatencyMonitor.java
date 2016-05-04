@@ -1,6 +1,7 @@
 package org.axonframework.metrics;
 
 import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Metric;
 import org.axonframework.eventhandling.EventMessage;
 
 import java.util.HashMap;
@@ -22,14 +23,13 @@ public class EventProcessorLatencyMonitor implements MessageMonitor<EventMessage
             }
 
             @Override
-            public void onFailure(Exception cause) {
+            public void onFailure(Throwable cause) {
                 updateIfMaxValue(lastProcessedTime, message.getTimestamp().toEpochMilli());
             }
         };
     }
 
-    @Override
-    public Map<String, Object> getMetricSet() {
+    public Map<String, Metric> getMetricSet() {
         long lastProcessedTimeLocal = this.lastProcessedTime.longValue();
         long lastReceivedTimeLocal = this.lastReceivedTime.longValue();
         long processTime;
@@ -38,7 +38,8 @@ public class EventProcessorLatencyMonitor implements MessageMonitor<EventMessage
         } else {
             processTime = lastProcessedTimeLocal - lastReceivedTimeLocal;
         }
-        Map<String, Object> metrics = new HashMap<>();
+        Map<String, Metric> metrics = new HashMap<>();
+        metrics.put("processLatency", (Gauge)() -> processTime);
         metrics.put("processLatency", (Gauge<Long>) () -> processTime);
         return metrics;
     }

@@ -39,7 +39,7 @@ import java.util.Set;
  */
 public class SimpleEventProcessor extends AbstractEventProcessor {
 
-    private MessageMonitor<EventMessage<?>> messageMonitor;
+    private final MessageMonitor<? super EventMessage<?>> messageMonitor;
 
     /**
      * Initializes the event processor with given <code>name</code>.
@@ -48,15 +48,15 @@ public class SimpleEventProcessor extends AbstractEventProcessor {
      */
     public SimpleEventProcessor(String name) {
         super(name);
-        this.messageMonitor = new NoOpMessageMonitor();
+        this.messageMonitor = NoOpMessageMonitor.INSTANCE;
     }
 
-    public SimpleEventProcessor(String name, MessageMonitor<EventMessage<?>> messageMonitor) {
+    public SimpleEventProcessor(String name, MessageMonitor<? super EventMessage<?>> messageMonitor) {
         super(name);
         this.messageMonitor = messageMonitor;
     }
 
-    public SimpleEventProcessor(String name, MessageMonitor<EventMessage<?>> messageMonitor, EventListener... initialListeners) {
+    public SimpleEventProcessor(String name, MessageMonitor<? super EventMessage<?>> messageMonitor, EventListener... initialListeners) {
         super(name, initialListeners);
         this.messageMonitor = messageMonitor;
     }
@@ -72,12 +72,12 @@ public class SimpleEventProcessor extends AbstractEventProcessor {
      */
     public SimpleEventProcessor(String name, OrderResolver orderResolver) {
         super(name, new EventListenerOrderComparator(orderResolver));
-        this.messageMonitor = new NoOpMessageMonitor();
+        this.messageMonitor = NoOpMessageMonitor.INSTANCE;
     }
 
     public SimpleEventProcessor(String name, EventListener... initialListeners) {
         super(name, initialListeners);
-        this.messageMonitor = new NoOpMessageMonitor();
+        this.messageMonitor = NoOpMessageMonitor.INSTANCE;
     }
 
     @Override
@@ -85,23 +85,21 @@ public class SimpleEventProcessor extends AbstractEventProcessor {
                           Set<MessageHandlerInterceptor<EventMessage<?>>> interceptors,
                           MultiplexingEventProcessingMonitor monitor) {
         try {
-            for (EventMessage event : events) {
+            for (EventMessage<?> event : events) {
                 MessageMonitor.MonitorCallback monitorCallback = messageMonitor.onMessageIngested(event);
-                try {
-                    UnitOfWork<EventMessage<?>> unitOfWork = DefaultUnitOfWork.startAndGet(event);
-                    InterceptorChain<?> interceptorChain = new DefaultInterceptorChain<>(unitOfWork,
-                            interceptors, (message, uow) -> {
-                        for (EventListener eventListener : eventListeners) {
-                            eventListener.handle(message);
-                        }
-                        return null;
-                    });
-                    unitOfWork.executeWithResult(interceptorChain::proceed);
-                    monitorCallback.onSuccess();
-                } catch (Exception e){
-                    monitorCallback.onFailure(e);
-                    throw e;
-                }
+                UnitOfWork<EventMessage<?>> unitOfWork = DefaultUnitOfWork.startAndGet(event);
+
+                unitOfWork.afterCommit(u -> monitorCallback.onSuccess());
+                unitOfWork.onRollback(u -> monitorCallback.onFailure(u.getExecutionResult().getExceptionResult()));
+
+                InterceptorChain<?> interceptorChain = new DefaultInterceptorChain<>(unitOfWork,
+                        interceptors, (message, uow) -> {
+                    for (EventListener eventListener : eventListeners) {
+                        eventListener.handle(message);
+                    }
+                    return null;
+                });
+                unitOfWork.executeWithResult(interceptorChain::proceed);
             }
             notifyMonitors(events, monitor, null);
         } catch (Exception e) {

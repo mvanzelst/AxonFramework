@@ -2,6 +2,7 @@ package org.axonframework.metrics;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Metric;
 import org.junit.Test;
 
 import java.util.Map;
@@ -19,7 +20,7 @@ public class CapacityMonitorTest {
         testClock.increase(1000);
         monitorCallback.onSuccess();
 
-        Map<String, Object> metricSet = testSubject.getMetricSet();
+        Map<String, Metric> metricSet = testSubject.getMetricSet();
         Gauge<Double> capacityGauge = (Gauge<Double>) metricSet.get("capacity");
         assertEquals(1, capacityGauge.getValue(), 0);
     }
@@ -34,7 +35,7 @@ public class CapacityMonitorTest {
         monitorCallback.onSuccess();
         monitorCallback2.onSuccess();
 
-        Map<String, Object> metricSet = testSubject.getMetricSet();
+        Map<String, Metric> metricSet = testSubject.getMetricSet();
         Gauge<Double> capacityGauge = (Gauge<Double>) metricSet.get("capacity");
         assertEquals(2, capacityGauge.getValue(), 0);
     }
@@ -43,7 +44,7 @@ public class CapacityMonitorTest {
     public void testEmptyCapacity(){
         TestClock testClock = new TestClock();
         CapacityMonitor testSubject = new CapacityMonitor(1, TimeUnit.SECONDS, testClock);
-        Map<String, Object> metricSet = testSubject.getMetricSet();
+        Map<String, Metric> metricSet = testSubject.getMetricSet();
         Gauge<Double> capacityGauge = (Gauge<Double>) metricSet.get("capacity");
         assertEquals(0, capacityGauge.getValue(), 0);
     }

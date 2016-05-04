@@ -1,12 +1,14 @@
 package org.axonframework.metrics;
 
+import com.codahale.metrics.Metric;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.MetricSet;
 import com.codahale.metrics.Timer;
 import org.axonframework.messaging.Message;
 
-import java.util.HashMap;
 import java.util.Map;
 
-public class MessageTimerMonitor implements MessageMonitor<Message<?>> {
+public class MessageTimerMonitor implements MessageMonitor<Message<?>>, MetricSet {
 
     private final Timer timer = new Timer();
     private final Timer successTimer = new Timer();
@@ -25,7 +27,7 @@ public class MessageTimerMonitor implements MessageMonitor<Message<?>> {
             }
 
             @Override
-            public void onFailure(Exception cause) {
+            public void onFailure(Throwable cause) {
                 timerContext.stop();
                 failureTimerContext.stop();
             }
@@ -33,8 +35,12 @@ public class MessageTimerMonitor implements MessageMonitor<Message<?>> {
     }
 
     @Override
-    public Map<String, Object> getMetricSet() {
-        Map<String, Object> metricSet = new HashMap<>();
+    public Map<String, Metric> getMetrics() {
+        MetricRegistry mr = new MetricRegistry();
+        mr.register("all", timer);
+        mr.register("success", successTimer);
+        mr.register("failure", failureTimer);
+        return mr.getMetrics();
         metricSet.put("timer", timer);
         metricSet.put("successTimer", successTimer);
         metricSet.put("failureTimer", failureTimer);

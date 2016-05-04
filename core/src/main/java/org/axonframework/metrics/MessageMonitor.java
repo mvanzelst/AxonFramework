@@ -2,7 +2,7 @@ package org.axonframework.metrics;
 
 import org.axonframework.messaging.Message;
 
-public interface MessageMonitor<T extends Message<?>> extends MetricSupport {
+public interface MessageMonitor<T extends Message<?>> {
 
     MonitorCallback onMessageIngested(T message);
 
@@ -10,6 +10,6 @@ public interface MessageMonitor<T extends Message<?>> extends MetricSupport {
 
         void onSuccess();
 
-        void onFailure(Exception cause);
+        void onFailure(Throwable cause);
     }
 }

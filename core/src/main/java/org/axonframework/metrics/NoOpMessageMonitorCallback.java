@@ -7,6 +7,6 @@ public class NoOpMessageMonitorCallback implements MessageMonitor.MonitorCallbac
     }
 
     @Override
-    public void onFailure(Exception cause) {
+    public void onFailure(Throwable cause) {
     }
 }

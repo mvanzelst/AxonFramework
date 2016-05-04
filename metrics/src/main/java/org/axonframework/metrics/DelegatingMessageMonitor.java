@@ -4,9 +4,7 @@ import org.axonframework.common.Assert;
 import org.axonframework.messaging.Message;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public class DelegatingMessageMonitor<T extends Message<?>> implements MessageMonitor<T> {
@@ -30,16 +28,10 @@ public class DelegatingMessageMonitor<T extends Message<?>> implements MessageMo
                 monitorCallbacks.forEach(MonitorCallback::onSuccess);
             }
             @Override
-            public void onFailure(Exception cause) {
+            public void onFailure(Throwable cause) {
                 monitorCallbacks.forEach(resultCallback -> resultCallback.onFailure(cause));
             }
         };
     }
 
-    @Override
-    public Map<String, Object> getMetricSet() {
-        Map<String, Object> metrics = new HashMap<>();
-        messageMonitors.forEach(eventBusMonitor -> metrics.putAll(eventBusMonitor.getMetricSet()));
-        return metrics;
-    }
 }

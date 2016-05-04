@@ -36,19 +36,19 @@ public class CapacityMonitor implements MessageMonitor<Message<?>> {
             }
 
             @Override
-            public void onFailure(Exception cause) {
+            public void onFailure(Throwable cause) {
                 processedDurationHistogram.update(clock.getTime() - start);
             }
         };
     }
 
-    @Override
-    public Map<String, Object> getMetricSet() {
+    public Map<String, Metric> getMetricSet() {
         Snapshot snapshot = processedDurationHistogram.getSnapshot();
         double meanProcessTime = snapshot.getMean();
         int numProcessed = snapshot.getValues().length;
         double capacity = (numProcessed * meanProcessTime) / timeUnit.toMillis(window);
-        Map<String, Object> metrics = new HashMap<>();
+        Map<String, Metric> metrics = new HashMap<>();
+        metrics.put("capacity", (Gauge)() -> capacity);
         metrics.put("capacity", (Gauge<Double>) () -> capacity);
         return metrics;
     }

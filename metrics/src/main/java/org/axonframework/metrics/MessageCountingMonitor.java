@@ -24,14 +24,13 @@ public class MessageCountingMonitor implements MessageMonitor<Message<?>> {
             }
 
             @Override
-            public void onFailure(Exception cause) {
+            public void onFailure(Throwable cause) {
                 processedCounter.inc();
                 failureCounter.inc();
             }
         };
     }
 
-    @Override
     public Map<String, Object> getMetricSet() {
         Map<String, Object> metricSet = new HashMap<>();
         metricSet.put("ingestedCounter", ingestedCounter);
