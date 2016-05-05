@@ -2,13 +2,14 @@ package org.axonframework.metrics;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Metric;
+import com.codahale.metrics.MetricSet;
 import org.axonframework.eventhandling.EventMessage;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class EventProcessorLatencyMonitor implements MessageMonitor<EventMessage<?>> {
+public class EventProcessorLatencyMonitor implements MessageMonitor<EventMessage<?>>, MetricSet {
 
     private final AtomicLong lastReceivedTime = new AtomicLong();
     private final AtomicLong lastProcessedTime = new AtomicLong();
@@ -29,7 +30,8 @@ public class EventProcessorLatencyMonitor implements MessageMonitor<EventMessage
         };
     }
 
-    public Map<String, Metric> getMetricSet() {
+    @Override
+    public Map<String, Metric> getMetrics() {
         long lastProcessedTimeLocal = this.lastProcessedTime.longValue();
         long lastReceivedTimeLocal = this.lastReceivedTime.longValue();
         long processTime;
@@ -39,8 +41,7 @@ public class EventProcessorLatencyMonitor implements MessageMonitor<EventMessage
             processTime = lastProcessedTimeLocal - lastReceivedTimeLocal;
         }
         Map<String, Metric> metrics = new HashMap<>();
-        metrics.put("processLatency", (Gauge)() -> processTime);
-        metrics.put("processLatency", (Gauge<Long>) () -> processTime);
+        metrics.put("latency", (Gauge<Long>) () -> processTime);
         return metrics;
     }
 

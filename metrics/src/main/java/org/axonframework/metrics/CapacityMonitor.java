@@ -7,12 +7,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class CapacityMonitor implements MessageMonitor<Message<?>> {
+public class CapacityMonitor implements MessageMonitor<Message<?>>, MetricSet {
 
     private final Histogram processedDurationHistogram;
     private final TimeUnit timeUnit;
     private final long window;
     private final Clock clock;
+    private final Metric ratio;
 
     public CapacityMonitor(long window, TimeUnit timeUnit) {
         this(window, timeUnit, Clock.defaultClock());
@@ -24,6 +25,7 @@ public class CapacityMonitor implements MessageMonitor<Message<?>> {
         this.timeUnit = timeUnit;
         this.window = window;
         this.clock = clock;
+        this.ratio = new RatioGauge();
     }
 
     @Override
@@ -42,14 +44,20 @@ public class CapacityMonitor implements MessageMonitor<Message<?>> {
         };
     }
 
-    public Map<String, Metric> getMetricSet() {
-        Snapshot snapshot = processedDurationHistogram.getSnapshot();
-        double meanProcessTime = snapshot.getMean();
-        int numProcessed = snapshot.getValues().length;
-        double capacity = (numProcessed * meanProcessTime) / timeUnit.toMillis(window);
+    @Override
+    public Map<String, Metric> getMetrics() {
         Map<String, Metric> metrics = new HashMap<>();
-        metrics.put("capacity", (Gauge)() -> capacity);
-        metrics.put("capacity", (Gauge<Double>) () -> capacity);
+        metrics.put("ratio", ratio);
         return metrics;
+    }
+
+    private class RatioGauge implements Gauge<Double> {
+        @Override
+        public Double getValue() {
+            Snapshot snapshot = processedDurationHistogram.getSnapshot();
+            double meanProcessTime = snapshot.getMean();
+            int numProcessed = snapshot.getValues().length;
+            return  (numProcessed * meanProcessTime) / timeUnit.toMillis(window);
+        }
     }
 }

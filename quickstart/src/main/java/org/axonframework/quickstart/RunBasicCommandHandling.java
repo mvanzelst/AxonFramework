@@ -1,4 +1,3 @@
-        mr.getMetrics().entrySet().stream()
 /*
  * Copyright (c) 2010-2014. Axon Framework
  *
@@ -17,12 +16,15 @@
 
 package org.axonframework.quickstart;
 
+import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
 import org.axonframework.commandhandling.CommandBus;
+import org.axonframework.commandhandling.CommandMessage;
 import org.axonframework.commandhandling.SimpleCommandBus;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.commandhandling.gateway.DefaultCommandGateway;
 import org.axonframework.eventhandling.EventBus;
+import org.axonframework.eventhandling.EventMessage;
 import org.axonframework.eventhandling.SimpleEventBus;
 import org.axonframework.eventhandling.SimpleEventProcessor;
 import org.axonframework.eventhandling.annotation.AnnotationEventListenerAdapter;
@@ -30,6 +32,8 @@ import org.axonframework.eventsourcing.EventSourcingRepository;
 import org.axonframework.eventstore.EventStore;
 import org.axonframework.eventstore.fs.FileSystemEventStore;
 import org.axonframework.eventstore.fs.SimpleEventFileResolver;
+import org.axonframework.metrics.MessageMonitor;
+import org.axonframework.metrics.MessageMonitorBuilder;
 import org.axonframework.quickstart.annotated.ToDoEventHandler;
 import org.axonframework.quickstart.api.CreateToDoItemCommand;
 import org.axonframework.quickstart.api.MarkCompletedCommand;
@@ -38,6 +42,7 @@ import org.axonframework.quickstart.handler.MarkCompletedCommandHandler;
 import org.axonframework.quickstart.handler.ToDoItem;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Setting up the basic ToDoItem sample with as little as possible help from axon utilities. The configuration takes
@@ -47,11 +52,11 @@ import java.io.File;
  */
 public class RunBasicCommandHandling {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         // let's start with the Command Bus
         MetricRegistry mr = new MetricRegistry();
         MessageMonitor<CommandMessage<?>> commandMessageMonitor = new MessageMonitorBuilder().buildCommandMessageMonitor(mr);
-        CommandBus commandBus = new SimpleCommandBus();
+        CommandBus commandBus = new SimpleCommandBus(commandMessageMonitor);
 
         // the CommandGateway provides a friendlier API to send commands
         CommandGateway commandGateway = new DefaultCommandGateway(commandBus);
@@ -72,9 +77,18 @@ public class RunBasicCommandHandling {
                 new MarkCompletedCommandHandler(repository));
 
         // We register an event listener to see which events are created
-        eventBus.subscribe(new SimpleEventProcessor("handler", new AnnotationEventListenerAdapter(new ToDoEventHandler())));
+        MessageMonitor<EventMessage<?>> eventMessageMonitor = new MessageMonitorBuilder().buildEventMessageMonitor(mr);
+        eventBus.subscribe(new SimpleEventProcessor("handler", eventMessageMonitor, new AnnotationEventListenerAdapter(new ToDoEventHandler())));
+
+        ConsoleReporter reporter = ConsoleReporter.forRegistry(mr)
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .build();
+
 
         // and let's send some Commands on the CommandBus using the special runner configured with our CommandGateway.
         CommandGenerator.sendCommands(commandGateway);
+
+        reporter.report();
     }
 }

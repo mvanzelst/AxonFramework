@@ -33,5 +33,4 @@ public class DelegatingMessageMonitor<T extends Message<?>> implements MessageMo
             }
         };
     }
-
 }

@@ -22,14 +22,11 @@ import org.axonframework.commandhandling.SimpleCommandBus;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.commandhandling.gateway.DefaultCommandGateway;
 import org.axonframework.eventhandling.EventBus;
-import org.axonframework.eventhandling.EventMessage;
 import org.axonframework.eventhandling.SimpleEventBus;
 import org.axonframework.eventhandling.SimpleEventProcessor;
 import org.axonframework.eventhandling.scheduling.EventScheduler;
 import org.axonframework.eventhandling.scheduling.java.SimpleEventScheduler;
 import org.axonframework.messaging.unitofwork.UnitOfWork;
-import org.axonframework.metrics.MessageMonitor;
-import org.axonframework.metrics.MessageMonitorBuilder;
 import org.axonframework.quickstart.api.MarkToDoItemOverdueCommand;
 import org.axonframework.quickstart.api.ToDoItemCompletedEvent;
 import org.axonframework.quickstart.api.ToDoItemCreatedEvent;
@@ -59,19 +56,18 @@ public class RunSaga {
         EventBus eventBus = new SimpleEventBus();
 
         // Sagas often need to send commands, so let's create a Command Bus
-        MessageMonitor<CommandMessage<?>> commandMessageMonitor = new MessageMonitorBuilder().buildCommandMessageMonitor();
-        CommandBus commandBus = new SimpleCommandBus(commandMessageMonitor);
+        CommandBus commandBus = new SimpleCommandBus();
 
         // a CommandGateway has a much nicer API
         CommandGateway commandGateway = new DefaultCommandGateway(commandBus);
 
         // let's register a Command Handler that writes to System Out so we can see what happens
         commandBus.subscribe(MarkToDoItemOverdueCommand.class.getName(),
-                             (CommandMessage<?> commandMessage, UnitOfWork<? extends CommandMessage<?>> unitOfWork) -> {
-                                 System.out.println(String.format("Got command to mark [%s] overdue!",
-                                         ((MarkToDoItemOverdueCommand) commandMessage.getPayload()).getTodoId()));
-                                 return null;
-                             });
+                (CommandMessage<?> commandMessage, UnitOfWork<? extends CommandMessage<?>> unitOfWork) -> {
+                    System.out.println(String.format("Got command to mark [%s] overdue!",
+                            ((MarkToDoItemOverdueCommand) commandMessage.getPayload()).getTodoId()));
+                    return null;
+                });
 
         // The Saga will schedule some deadlines in our sample
         final ScheduledExecutorService executorService = newSingleThreadScheduledExecutor();
@@ -89,8 +85,7 @@ public class RunSaga {
         AnnotatedSagaManager sagaManager = new AnnotatedSagaManager(sagaRepository, sagaFactory, ToDoSaga.class);
 
         // and we need to subscribe the Saga Manager to the Event Bus
-        MessageMonitor<EventMessage<?>> eventMessageMonitor = new MessageMonitorBuilder().buildEventMessageMonitor();
-        eventBus.subscribe(new SimpleEventProcessor("saga", eventMessageMonitor, sagaManager));
+        eventBus.subscribe(new SimpleEventProcessor("saga", sagaManager));
 
         // That's the infrastructure we need...
         // Let's pretend a few things are happening
