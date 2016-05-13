@@ -12,20 +12,19 @@ public class MessageMonitorBuilder {
 
     public MessageMonitor<EventMessage<?>> buildEventMessageMonitor(MetricRegistry globalRegistry){
         MessageTimerMonitor messageTimerMonitor = new MessageTimerMonitor();
-        EventProcessorLatencyMonitor eventProcessorLatencyMonitor = new EventProcessorLatencyMonitor();
+        EventBusRelativeLatencyMonitor eventBusRelativeLatencyMonitor = new EventBusRelativeLatencyMonitor();
         CapacityMonitor capacityMonitor = new CapacityMonitor(1, TimeUnit.MINUTES);
         MessageCountingMonitor messageCountingMonitor = new MessageCountingMonitor();
 
         MetricRegistry eventProcessingRegistry = new MetricRegistry();
         eventProcessingRegistry.register("messageTimer", messageTimerMonitor);
-        eventProcessingRegistry.register("eventProcessorLatency", eventProcessorLatencyMonitor);
-        eventProcessingRegistry.register("capacity", capacityMonitor);
+        eventProcessingRegistry.register("eventProcessorLatency", eventBusRelativeLatencyMonitor);
         eventProcessingRegistry.register("messageCounter", messageCountingMonitor);
         globalRegistry.register("eventProcessing", eventProcessingRegistry);
 
         List<MessageMonitor<? super EventMessage<?>>> monitors = new ArrayList<>();
         monitors.add(messageTimerMonitor);
-        monitors.add(eventProcessorLatencyMonitor);
+        monitors.add(eventBusRelativeLatencyMonitor);
         monitors.add(capacityMonitor);
         monitors.add(messageCountingMonitor);
         return new DelegatingMessageMonitor<>(monitors);

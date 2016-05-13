@@ -7,24 +7,38 @@ import org.axonframework.eventhandling.EventMessage;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class EventProcessorLatencyMonitor implements MessageMonitor<EventMessage<?>>, MetricSet {
+/**
+ * Measures the difference in message timestamps between the last ingesting and the last processed message.
+ *
+ * @author Marijn van Zelst
+ * @since 3.0
+ */
+public class EventBusRelativeLatencyMonitor implements MessageMonitor<EventMessage<?>>, MetricSet {
 
-    private final AtomicLong lastReceivedTime = new AtomicLong();
-    private final AtomicLong lastProcessedTime = new AtomicLong();
+    private final AtomicLong lastReceivedTime = new AtomicLong(-1);
+    private final AtomicLong lastProcessedTime = new AtomicLong(-1);
 
     @Override
     public MonitorCallback onMessageIngested(EventMessage<?> message) {
+        if(message == null){
+            return new NoOpMessageMonitorCallback();
+        }
         updateIfMaxValue(lastReceivedTime, message.getTimestamp().toEpochMilli());
         return new MonitorCallback() {
             @Override
             public void onSuccess() {
-                updateIfMaxValue(lastProcessedTime, message.getTimestamp().toEpochMilli());
+                update();
             }
 
             @Override
-            public void onFailure(Throwable cause) {
+            public void onFailure(Optional<Throwable> cause) {
+                update();
+            }
+
+            private void update(){
                 updateIfMaxValue(lastProcessedTime, message.getTimestamp().toEpochMilli());
             }
         };
@@ -32,13 +46,13 @@ public class EventProcessorLatencyMonitor implements MessageMonitor<EventMessage
 
     @Override
     public Map<String, Metric> getMetrics() {
-        long lastProcessedTimeLocal = this.lastProcessedTime.longValue();
-        long lastReceivedTimeLocal = this.lastReceivedTime.longValue();
+        long lastProcessedTime = this.lastProcessedTime.longValue();
+        long lastReceivedTime = this.lastReceivedTime.longValue();
         long processTime;
-        if(lastReceivedTimeLocal == 0 || lastProcessedTimeLocal == 0){
+        if(lastReceivedTime == -1 || lastProcessedTime == -1){
             processTime = 0;
         } else {
-            processTime = lastProcessedTimeLocal - lastReceivedTimeLocal;
+            processTime = lastReceivedTime - lastProcessedTime;
         }
         Map<String, Metric> metrics = new HashMap<>();
         metrics.put("latency", (Gauge<Long>) () -> processTime);

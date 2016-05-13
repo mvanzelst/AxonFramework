@@ -5,8 +5,23 @@ import org.axonframework.messaging.Message;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Calculates capacity by tracking, within the configured time window, the average message processing time
+ * and multiplying that by the amount of messages processed.
+ *
+ * The capacity can be more than 1 if the monitored
+ * message handler processes the messages in parallel. The capacity for a single threaded message handler will be
+ * a value between 0 and 1.
+ *
+ * If the value for a single threaded message handler is 1 the component is active 100% of the time. This means
+ * that messages will have to wait to be processed.
+ *
+ * @author Marijn van Zelst
+ * @since 3.0
+ */
 public class CapacityMonitor implements MessageMonitor<Message<?>>, MetricSet {
 
     private final Histogram processedDurationHistogram;
@@ -19,7 +34,7 @@ public class CapacityMonitor implements MessageMonitor<Message<?>>, MetricSet {
         this(window, timeUnit, Clock.defaultClock());
     }
 
-    public CapacityMonitor(long window, TimeUnit timeUnit, Clock clock) {
+    CapacityMonitor(long window, TimeUnit timeUnit, Clock clock) {
         SlidingTimeWindowReservoir slidingTimeWindowReservoir = new SlidingTimeWindowReservoir(window, timeUnit, clock);
         this.processedDurationHistogram = new Histogram(slidingTimeWindowReservoir);
         this.timeUnit = timeUnit;
@@ -38,7 +53,7 @@ public class CapacityMonitor implements MessageMonitor<Message<?>>, MetricSet {
             }
 
             @Override
-            public void onFailure(Throwable cause) {
+            public void onFailure(Optional<Throwable> cause) {
                 processedDurationHistogram.update(clock.getTime() - start);
             }
         };
